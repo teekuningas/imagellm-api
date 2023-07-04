@@ -13,13 +13,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: Extract tag name
+      shell: bash
+      run: echo "IMAGE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
     - name: Setup Nix
       uses: cachix/install-nix-action@v22
       with:
         extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
 
     - name: Build
-      run: nix build .#dockerImage
+      run: |
+        nix build .#dockerImage
+        docker load < result
+        docker tag localhost/imagellm-api:latest localhost/imagellm-api:${IMAGE_TAG}
+        docker save localhost/imagellm-api:$IMAGE_TAG | gzip > imagellm-api-${IMAGE_TAG}.tar.gz
 
     - name: Create Release
       id: create_release
@@ -38,6 +46,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./result
-        asset_name: imagellm-api.tar.gz
+        asset_path: ./imagellm-api-${{ env.IMAGE_TAG }}.tar.gz
+        asset_name: imagellm-api-${{ env.IMAGE_TAG }}.tar.gz
         asset_content_type: application/gzip
