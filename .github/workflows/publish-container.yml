@@ -6,7 +6,7 @@ on:
       - '*'
 
 jobs:
-  build:
+  build_and_publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,30 +22,16 @@ jobs:
       with:
         extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
 
-    - name: Build
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push
       run: |
         nix build .#dockerImage
         docker load < result
-        docker tag imagellm-api:latest localhost/imagellm-api:${IMAGE_TAG}
-        docker save localhost/imagellm-api:$IMAGE_TAG | gzip > imagellm-api-${IMAGE_TAG}.tar.gz
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./imagellm-api-${{ env.IMAGE_TAG }}.tar.gz
-        asset_name: imagellm-api-${{ env.IMAGE_TAG }}.tar.gz
-        asset_content_type: application/gzip
+        docker tag imagellm-api:latest ghcr.io/${{ github.repository }}/imagellm-api:${{ env.IMAGE_TAG }}
+        docker push ghcr.io/${{ github.repository }}/imagellm-api:${{ env.IMAGE_TAG }}
