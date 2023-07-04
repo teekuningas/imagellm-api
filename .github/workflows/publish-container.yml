@@ -26,7 +26,7 @@ jobs:
       run: |
         nix build .#dockerImage
         docker load < result
-        docker tag localhost/imagellm-api:latest localhost/imagellm-api:${IMAGE_TAG}
+        docker tag imagellm-api:latest localhost/imagellm-api:${IMAGE_TAG}
         docker save localhost/imagellm-api:$IMAGE_TAG | gzip > imagellm-api-${IMAGE_TAG}.tar.gz
 
     - name: Create Release
