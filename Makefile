@@ -6,6 +6,10 @@ shell:
 watch:
 	uvicorn main:app --reload
 
+.PHONY: format
+format:
+	black main.py
+
 .PHONY: build
 build:
 	nix build .#dockerImage

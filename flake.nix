@@ -11,6 +11,10 @@
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           fastapi
           uvicorn
+          requests
+          openai
+          tiktoken
+          black
         ]);
       in
       {
