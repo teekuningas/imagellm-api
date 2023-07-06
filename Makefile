@@ -4,7 +4,7 @@ shell:
 
 .PHONY: watch
 watch:
-	uvicorn main:app --reload
+	IMAGELLM_DEV=true uvicorn main:app --reload
 
 .PHONY: format
 format:

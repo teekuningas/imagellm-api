@@ -5,10 +5,25 @@ import openai
 import requests
 import tiktoken
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
 app = FastAPI()
+
+
+if os.environ.get("IMAGELLM_DEV") == "true":
+    print("Running in development mode..")
+    origins = ["http://localhost:1234"]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -49,7 +64,7 @@ def get_llm_response(messages):
 
     # The instruction prompt
     instruction = """
-You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, you can invoke them in the conversation. Whenever you deem it appropriate to include an image, insert a placeholder in this format: {{image query string}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user.
+You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, you can invoke them in the conversation. Whenever you deem it appropriate to include an image, insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating. However, the images should never be placed inside a sentence, as that will make it hard to present it to the user. So, the text and images could alternate, and the best places to put images are between paragraphs. You may build your textual responses so that images can be well placed. You do not always need to include images, only when it seems helpful.
     """
 
     # The conversation history
