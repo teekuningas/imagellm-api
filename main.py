@@ -64,7 +64,7 @@ def get_llm_response(messages):
 
     # The instruction prompt
     instruction = """
-You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, you can invoke them in the conversation. Whenever you deem it appropriate to include an image, insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating. However, the images should never be placed inside a sentence, as that will make it hard to present it to the user. So, the text and images could alternate, and the best places to put images are between paragraphs. You may build your textual responses so that images can be well placed. You do not always need to include images, only when it seems helpful.
+You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, the user will see them if you insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating, and most preferably, if possible, between paragraphs and not within sentences. I know you like your superpower, however, you should not go overboard: please only include images when appropriate. Remember, less is more.
     """
 
     # The conversation history
@@ -94,7 +94,7 @@ You are an AI chatbot interacting with a human user. You possess a unique capabi
         + "\n\nAssistant's turn:"
     )
 
-    response = openai.Completion.create(engine=model, prompt=prompt, max_tokens=512)
+    response = openai.Completion.create(engine=model, prompt=prompt, max_tokens=2048)
 
     message = response.choices[0].text.strip()
     return message
@@ -123,4 +123,12 @@ def create_message(messages):
 @app.post("/generate_response")
 async def generate_response(content: Message):
     response = content.messages + [create_message(content.messages)]
+
+    # to debug, you may use a mock
+    # response = content.messages + [{
+    #     "role": "assistant",
+    #     "text": "Hello I am a bot. {{whale}} I like cats. {{cat}}",
+    #     "images": [{"url": "https://img.freepik.com/premium-photo/mammals-animals-big-blue-whale-white-background_124507-30784.jpg"}, {"url": "https://cdn.britannica.com/39/7139-050-A88818BB/Himalayan-chocolate-point.jpg"}]
+    # }]
+
     return {"messages": response}
