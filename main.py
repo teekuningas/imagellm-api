@@ -48,55 +48,48 @@ def search_google_images(query):
 
 
 def get_llm_response(messages):
-    buffer_tokens = 50
-    max_tokens = 4096
-    model = "text-davinci-003"
+    buffer_tokens = 256
+    wrapper_tokens = 5
+    max_tokens = 16384
+    model = "gpt-3.5-turbo-16k"
 
     def count_tokens(text):
         encoding = tiktoken.encoding_for_model(model)
         return len(encoding.encode(text))
 
-    def format_message(message):
-        if message["role"] == "user":
-            return "User: " + message["text"]
-        else:
-            return "System: " + message["text"]
-
     # The instruction prompt
-    instruction = """
-You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, the user will see them if you insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating, and most preferably, if possible, between paragraphs and not within sentences. I know you like your superpower, however, you should not go overboard: please only include images when appropriate. Remember, less is more.
-    """
-
-    # The conversation history
-    conversation_history = [format_message(message) for message in messages]
+    instruction = """You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, the user will see them if you insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating, and most preferably, if possible, between paragraphs and not within sentences. I know you like your superpower, however, you should not go overboard: please only include images when appropriate. Remember, less is more."""
 
     # Calculate how many tokens we can use for the conversation history
     tokens_available = max_tokens - count_tokens(instruction) - buffer_tokens
 
-    # Create a single string from the list of messages
-    conversation_str = "\n\n".join(conversation_history)
-
     # Truncate conversation history if necessary
-    if count_tokens(conversation_str) > tokens_available:
-        while conversation_history:
-            conversation_str = "\n".join(conversation_history)
-            if count_tokens(conversation_str) <= tokens_available:
+    conversation_str = "\n\n".join([msg["text"] for msg in messages])
+    if count_tokens(conversation_str) + wrapper_tokens*len(messages) > tokens_available:
+        while messages:
+            conversation_str = "\n\n".join([msg["text"] for msg in messages])
+            if count_tokens(conversation_str) + wrapper_tokens*len(messages) <= tokens_available:
                 break
             else:
-                conversation_history.pop(0)
+                messages.pop(0)
 
-    # Combine the instruction and conversation history into the final prompt
-    prompt = (
-        instruction
-        + "\n"
-        + "Here's the chat so far:\n\n"
-        + conversation_str
-        + "\n\nAssistant's turn:"
-    )
+    # prepare prompt that ChatCompletion understands
+    messages_prompt = []
+    messages_prompt.append({"role": "system", "content": instruction})
+    for message in messages:
+        messages_prompt.append({"role": message['role'], "content": message['text']})
 
-    response = openai.Completion.create(engine=model, prompt=prompt, max_tokens=2048)
+    # And run the query
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages_prompt, temperature=0)
 
-    message = response.choices[0].text.strip()
+    # Extract the message
+    message = response["choices"][0]["message"]["content"]
+
+    # Do a little cleanup.
+    message = message.replace("}}.", "}}")
+
     return message
 
 
