@@ -12,9 +12,9 @@ from pydantic import BaseModel
 app = FastAPI()
 
 
-if os.environ.get("IMAGELLM_DEV") == "true":
+if os.environ.get("CORS_DEV"):
     print("Running in development mode..")
-    origins = ["http://localhost:1234"]
+    origins = [os.environ.get("CORS_DEV")]
 
     app.add_middleware(
         CORSMiddleware,
@@ -108,12 +108,21 @@ def create_message(messages):
     matches = re.findall(r"{{(.*?)}}", message_text)
 
     # for each placeholder, to a google image search
-    # and pick the first result.
+    # and pick the good first result.
     images = []
     for match in matches:
         results = search_google_images(match)
-        if results:
-            images.append({"url": results["items"][0]["link"]})
+        found = False
+        if results.get("items"):
+            for result in results["items"]:
+                if any(
+                    [result["link"].endswith(".png"), result["link"].endswith(".jpg")]
+                ):
+                    images.append({"url": result["link"]})
+                    found = True
+                    break
+        if not found:
+            images.append({"url": ""})
 
     # combine everything to a single message
     message = {"text": message_text, "images": images, "role": "assistant"}
@@ -130,5 +139,6 @@ async def generate_response(content: Message):
     #     "text": "Hello I am a bot. {{whale}} I like cats. {{cat}}",
     #     "images": [{"url": "https://img.freepik.com/premium-photo/mammals-animals-big-blue-whale-white-background_124507-30784.jpg"}, {"url": "https://cdn.britannica.com/39/7139-050-A88818BB/Himalayan-chocolate-point.jpg"}]
     # }]
+    # import time; time.sleep(2)
 
     return {"messages": response}

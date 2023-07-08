@@ -4,7 +4,7 @@ shell:
 
 .PHONY: watch
 watch:
-	IMAGELLM_DEV=true uvicorn main:app --reload
+	CORS_DEV=http://localhost:1234 uvicorn main:app --reload
 
 .PHONY: format
 format:
