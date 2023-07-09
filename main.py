@@ -58,17 +58,23 @@ def get_llm_response(messages):
         return len(encoding.encode(text))
 
     # The instruction prompt
-    instruction = """You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, the user will see them if you insert a placeholder in this format: {{description of the contents of the image}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating, and most preferably, if possible, between paragraphs and not within sentences. I know you like your superpower, however, you should not go overboard: please only include images when appropriate. Remember, less is more."""
+    instruction = """You are an AI chatbot interacting with a human user. You possess a unique capability to enrich the conversation with images. While you are not able to see or comprehend images, the user will see them if you insert a placeholder in this format: {{image:<query string>}}. This placeholder will then be passed to the Google Image Search API and the first result will be displayed to the user. You should try to build the answers so that the text and images flow naturally, perhaps alternating, and most preferably, if possible, between paragraphs and not within sentences. I know you like your superpower, however, you should not go overboard: please only include images when appropriate. Remember, less is more."""
 
     # Calculate how many tokens we can use for the conversation history
     tokens_available = max_tokens - count_tokens(instruction) - buffer_tokens
 
     # Truncate conversation history if necessary
     conversation_str = "\n\n".join([msg["text"] for msg in messages])
-    if count_tokens(conversation_str) + wrapper_tokens*len(messages) > tokens_available:
+    if (
+        count_tokens(conversation_str) + wrapper_tokens * len(messages)
+        > tokens_available
+    ):
         while messages:
             conversation_str = "\n\n".join([msg["text"] for msg in messages])
-            if count_tokens(conversation_str) + wrapper_tokens*len(messages) <= tokens_available:
+            if (
+                count_tokens(conversation_str) + wrapper_tokens * len(messages)
+                <= tokens_available
+            ):
                 break
             else:
                 messages.pop(0)
@@ -77,12 +83,12 @@ def get_llm_response(messages):
     messages_prompt = []
     messages_prompt.append({"role": "system", "content": instruction})
     for message in messages:
-        messages_prompt.append({"role": message['role'], "content": message['text']})
+        messages_prompt.append({"role": message["role"], "content": message["text"]})
 
     # And run the query
     response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages_prompt, temperature=0)
+        model=model, messages=messages_prompt, temperature=0
+    )
 
     # Extract the message
     message = response["choices"][0]["message"]["content"]
@@ -98,7 +104,7 @@ def create_message(messages):
     message_text = get_llm_response(messages)
 
     # find image placeholders
-    matches = re.findall(r"{{(.*?)}}", message_text)
+    matches = re.findall(r"{{image:(.*?)}}", message_text)
 
     # for each placeholder, to a google image search
     # and pick the good first result.
@@ -108,12 +114,24 @@ def create_message(messages):
         found = False
         if results.get("items"):
             for result in results["items"]:
-                if any(
-                    [result["link"].endswith(".png"), result["link"].endswith(".jpg")]
+                # only allow secure urls
+                # (most importantly to not face problems with
+                # embedding http-urls within https-site)
+                if not result["link"].startswith("https://"):
+                    continue
+
+                if all(
+                    [
+                        not result["link"].endswith(".png"),
+                        not result["link"].endswith(".jpg"),
+                    ]
                 ):
-                    images.append({"url": result["link"]})
-                    found = True
-                    break
+                    continue
+
+                images.append({"url": result["link"]})
+                found = True
+                break
+
         if not found:
             images.append({"url": ""})
 
