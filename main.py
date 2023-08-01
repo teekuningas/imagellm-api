@@ -26,6 +26,7 @@ if os.environ.get("CORS_DEV"):
 
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+openai.organization = "org-qEMZflPwb5kyTTBltgy8aD5f"
 
 
 class Message(BaseModel):
