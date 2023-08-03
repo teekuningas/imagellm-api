@@ -26,7 +26,7 @@ if os.environ.get("CORS_DEV"):
 
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
-openai.organization = os.environ.get("OPENAI_ORGANIZATION_ID", None)
+openai.organization = os.environ.get("OPENAI_ORGANIZATION_ID")
 
 
 class Message(BaseModel):
@@ -51,8 +51,12 @@ def search_google_images(query):
 def get_llm_response(messages):
     buffer_tokens = 256
     wrapper_tokens = 5
-    max_tokens = 16384
-    model = "gpt-3.5-turbo-16k"
+
+    max_tokens = 8192
+    if os.environ.get('OPENAI_MAX_TOKENS'):
+        max_tokens = int(os.environ.get('OPENAI_MAX_TOKENS'))
+
+    model = os.environ.get('OPENAI_MODEL') or "gpt-4"
 
     def count_tokens(text):
         encoding = tiktoken.encoding_for_model(model)
